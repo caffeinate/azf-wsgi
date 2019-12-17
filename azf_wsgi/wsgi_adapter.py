@@ -49,6 +49,8 @@ class AzureFunctionsWsgi:
         if body_content_type and 'charset=' in body_content_type:
             header_parts = body_content_type.split(';')
             for part in header_parts:
+                if '=' not in part:
+                    continue
                 directive, value = part.split('=', maxsplit=1)
                 if 'charset' in directive:
                     body_encoding = value
