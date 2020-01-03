@@ -1,4 +1,4 @@
-from io import StringIO
+from io import StringIO, BytesIO
 import logging
 from urllib.parse import urlparse
 from wsgiref.headers import Headers
@@ -26,7 +26,7 @@ class AzureFunctionsWsgi:
         self._req = req
         self._context = context
 
-        self._get_body()
+        self._body = self._req.get_body()
         self._setup_environ()
 
         buffer = [x for x in self._app(self._environ, self._start_response)]
@@ -41,22 +41,6 @@ class AzureFunctionsWsgi:
         return func.HttpResponse(b''.join(buffer),
             headers=self._azure_headers,
             **response_values)
-
-    def _get_body(self):
-        body_encoding = 'utf-8' # default
-
-        body_content_type = self._req.headers.get('Content-Type')
-        if body_content_type and 'charset=' in body_content_type:
-            header_parts = body_content_type.split(';')
-            for part in header_parts:
-                if '=' not in part:
-                    continue
-                directive, value = part.split('=', maxsplit=1)
-                if 'charset' in directive:
-                    body_encoding = value
-                    break
-
-        self._body = self._req.get_body().decode(body_encoding)
 
     def _setup_environ(self):
         req_url = urlparse(self._req.url)
@@ -77,7 +61,7 @@ class AzureFunctionsWsgi:
             'SERVER_SOFTWARE': 'azure-functions',
             'wsgi.version': (1,0),
             'wsgi.url_scheme': req_url.scheme,
-            'wsgi.input': StringIO(self._body),
+            'wsgi.input': BytesIO(self._body),
             'wsgi.errors': self._errors,
             'wsgi.multithread': True,
             'wsgi.multiprocess': False,
